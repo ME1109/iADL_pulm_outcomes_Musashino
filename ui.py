@@ -1,9 +1,9 @@
 import streamlit as st
 import numpy as np
-import requests
+import pandas as pd
 from model import models
 
-#ページレイアウトをワイドに設定
+# ページレイアウトをワイドに設定
 st.set_page_config(layout="wide")
 # ヘッダーとメインコンテンツの余白を減らすCSS
 st.markdown(
@@ -26,8 +26,7 @@ st.markdown(
 # タイトル
 st.markdown("<h1 style='font-size:24px; color:red;'>自宅ADLで呼内緊急入院の期間や転帰を予測する：</h1>", unsafe_allow_html=True)
 
-# ★★各種ウィジェット定義★★
-# 7列にして表示する
+# 各種ウィジェット定義
 col1, col2, col3, col4, col5, col6, col7 = st.columns([1, 0.1, 1, 0.1, 1, 0.1, 1])
 with col1:
     # 性別
@@ -78,11 +77,10 @@ with col1:
     disease_values = {'喘息COPD': 0, '腫瘍': 0, '隔離感染症': 0, '肺炎': 0, '胸膜疾患': 0, 'IP': 0, 'その他': 0}
     disease_values[disease] = 1
     # 入院経路の選択肢を作成（ボタンは不要：全例緊急入院で1なので）
-#    admission_route = st.radio('入院経路:', ['予定入院', '予定外・緊急の入院'])
     admission_route_value = 1
 
 with col2:
-    st.markdown("<div style='border-left: 10px solid balck; height: 100%;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='border-left: 10px solid black; height: 100%;'></div>", unsafe_allow_html=True)
 
 with col3:
     # 食事
@@ -156,64 +154,57 @@ with col7:
             '病名_IP': disease_values['IP'],
             '病名_その他': disease_values['その他']
         }
-        response = requests.post("http://localhost:8001/make_predictions", json=input_data)
-        result = response.json()
+        
+        input_df = pd.DataFrame([input_data])
 
-        if response.status_code == 200:
-            result = response.json()
-            # 結果を表示
-            st.markdown("<h1 style='font-size:24px; color:black;'>推論結果：</h1>", unsafe_allow_html=True)
-            st.markdown("<h1 style='font-size:24px; color:blue;'>予想される退院経路:</h1>", unsafe_allow_html=True)
-            st.write(f'  死亡の確率: {result["予想される退院経路"]["死亡の確率"]}')
-            st.write(f'  転院の確率: {result["予想される退院経路"]["転院の確率"]}')
-#            st.write(f'  通常退院の確率: {result["予想される退院経路"]["通常退院の確率"]}')
-            st.write()
-            st.markdown("<h1 style='font-size:24px; color:blue;'>予想される入院期間：</h1>", unsafe_allow_html=True)
-            st.write(f'  1週間以内の確率: {result["予想される入院期間"]["1週間以内の確率"]}')
-#            st.write(f'  1-2週間の確率: {result["予想される入院期間"]["1-2週間の確率"]}')
-#            st.write(f'  2-3週間の確率: {result["予想される入院期間"]["2-3週間の確率"]}')
-            # 1-2週間と2-3週間の確率を足し算した確率を表示
-            stay_prob_1_2 = float(result["予想される入院期間"]["1-2週間の確率"].replace('%', ''))
-            stay_prob_2_3 = float(result["予想される入院期間"]["2-3週間の確率"].replace('%', ''))
-            st.write(f'  1-3週間の確率: {stay_prob_1_2 + stay_prob_2_3:.1f}%')
-            st.write(f'  3週間以上の確率: {result["予想される入院期間"]["3週間以上の確率"]}')
-            st.write()
-            # 介護申請の必要性(判定1):転院率≥10%または入院期間3週間以上が20%超の場合、"あり"
-            # 文字列として返される確率値を float に変換(%表示=文字列で比較計算できないので)
-            transfer_prob = float(result["予想される退院経路"]["転院の確率"].replace('%', ''))
-            stay_prob_2_3 = float(result["予想される入院期間"]["2-3週間の確率"].replace('%', ''))
-            stay_prob_3_plus = float(result["予想される入院期間"]["3週間以上の確率"].replace('%', ''))
-            care_status_1 = care
-            care_needs_1 = 'まだしなくて良い'  # デフォルトを設定
-            if care_status_1 == '要介護・要支援を取得済':
-                care_needs_1 = '取得済みです(地域包括支援センターに有事相談できます)'
-#            if (transfer_prob >= 10) or (stay_prob_2_3 + stay_prob_3_plus >= 20):
-            if (transfer_prob >= 20) or (stay_prob_3_plus >= 20):
-                if (care_status_1 == '未申請') and (age >= 65):
-                    care_needs_1 = '必要です'
-            st.markdown("<h1 style='font-size:24px; color:blue;'>介護申請の必要性(判定1)：</h1>", unsafe_allow_html=True)
-#            st.write(f'転院率(≥10%)や2w超の入院率(≥20%)で判定')
-            st.write(f'転院率・3週超の入院率(≥20%)で判定')
-#            st.write(f'  申請は、{care_needs_1}')
-            st.markdown(f"<span style='color:red; font-weight:bold;'>  申請は、{care_needs_1}</span>", unsafe_allow_html=True)
-            # 介護申請の必要性(判定2):65歳以上の介護未申請者で、退院したが3週間超の入院、または転院・死亡した場合、"あり"
-            st.markdown("<h1 style='font-size:24px; color:blue;'>介護申請の必要性(判定2)：</h1>", unsafe_allow_html=True)
-            st.write(f'転院率・3週超えの入院率の予測モデル')
-            care_status_2 = care
-            care_needs_2 = 'まだしなくて良いです'  # デフォルトを設定
-            if care_status_2 == '要介護・要支援を取得済':
-                care_needs_2 = '取得済みです(地域包括支援センターに有事相談できます)'
-#            if result["介護申請の必要性(判定2)"]["判定"] == 1:
-#                care_needs_2 = '必要です'
-            # 介護申請が必要な確率が30%以上の場合の判定
-            nursing_care_prob = float(result["介護申請の必要性(判定2)"]["介護申請が必要な確率"].replace('%', ''))
-            if nursing_care_prob >= 30:
-                if (care_status_1 == '未申請') and (age >= 65):
-                    care_needs_2 = '必要です'
-#            st.write(f'  介護申請は不要な確率: {result["介護申請の必要性(判定2)"]["介護申請は不要な確率"]}')
-            st.write(f'  介護申請が必要な確率: {result["介護申請の必要性(判定2)"]["介護申請が必要な確率"]}')
-#            st.write(f'  申請は、{care_needs_2}')
-            st.markdown(f"<span style='color:red; font-weight:bold;'>  申請は、{care_needs_2}</span>", unsafe_allow_html=True)
+        # 予測実行
+        input_array = input_df.values
+        prediction_outcome = models['outcome_e'].predict(input_array)
+        probabilities_outcome = models['outcome_e'].predict_proba(input_array)
+        prediction_hospitalstay = models['hospitalstay_e'].predict(input_array)
+        probabilities_hospitalstay = models['hospitalstay_e'].predict_proba(input_array)
+        
+        input_array_2 = input_df.drop(columns=['介護_取得済', '介護_未取得', '介護_対象外']).values
+        prediction_nursingcare = models['nursingcare_e'].predict(input_array_2)
+        probabilities_nursingcare = models['nursingcare_e'].predict_proba(input_array_2)
 
-        else:
-            st.error("エラー: FastAPI サーバーから正しいレスポンスを受け取れませんでした。")
+        st.markdown("<h1 style='font-size:24px; color:black;'>推論結果：</h1>", unsafe_allow_html=True)
+        st.markdown("<h1 style='font-size:24px; color:blue;'>予想される退院経路:</h1>", unsafe_allow_html=True)
+        st.write(f'死亡の確率: {probabilities_outcome[0][0] * 100:.1f}%')
+        st.write(f'転院の確率: {probabilities_outcome[0][1] * 100:.1f}%')
+        # st.write(f'通常退院の確率: {probabilities_outcome[0][2] * 100:.1f}%')
+
+        st.markdown("<h1 style='font-size:24px; color:blue;'>予想される入院期間：</h1>", unsafe_allow_html=True)
+        st.write(f'1週間以内の確率: {probabilities_hospitalstay[0][0] * 100:.1f}%')
+        st.write(f'1-2週間の確率: {probabilities_hospitalstay[0][1] * 100:.1f}%')
+        st.write(f'2-3週間の確率: {probabilities_hospitalstay[0][2] * 100:.1f}%')
+        stay_prob_1_2 = probabilities_hospitalstay[0][1] * 100
+        stay_prob_2_3 = probabilities_hospitalstay[0][2] * 100
+        st.write(f'1-3週間の確率: {stay_prob_1_2 + stay_prob_2_3:.1f}%')
+        st.write(f'3週間以上の確率: {probabilities_hospitalstay[0][3] * 100:.1f}%')
+
+        st.markdown("<h1 style='font-size:24px; color:blue;'>介護申請の必要性(判定1)：</h1>", unsafe_allow_html=True)
+        transfer_prob = probabilities_outcome[0][1] * 100
+        stay_prob_3_plus = probabilities_hospitalstay[0][3] * 100
+        care_status_1 = care
+        care_needs_1 = 'まだしなくて良い'  # デフォルトを設定
+        if care_status_1 == '要介護・要支援を取得済':
+            care_needs_1 = '取得済みです(地域包括支援センターに有事相談できます)'
+        if (transfer_prob >= 20) or (stay_prob_3_plus >= 20):
+            if (care_status_1 == '未申請') and (age >= 65):
+                care_needs_1 = '必要です'
+        st.write(f'転院率・3週超の入院率(≥20%)で判定')
+        st.markdown(f"<span style='color:red; font-weight:bold;'> 申請は、{care_needs_1}</span>", unsafe_allow_html=True)
+
+        st.markdown("<h1 style='font-size:24px; color:blue;'>介護申請の必要性(判定2)：</h1>", unsafe_allow_html=True)
+        st.write(f'転院率・3週超えの入院率の予測モデル')
+        care_status_2 = care
+        care_needs_2 = 'まだしなくて良いです'  # デフォルトを設定
+        if care_status_2 == '要介護・要支援を取得済':
+            care_needs_2 = '取得済みです(地域包括支援センターに有事相談できます)'
+        nursing_care_prob = probabilities_nursingcare[0][1] * 100
+        if nursing_care_prob >= 30:
+            if (care_status_1 == '未申請') and (age >= 65):
+                care_needs_2 = '必要です'
+        st.write(f'介護申請が必要な確率: {probabilities_nursingcare[0][1] * 100:.1f}%')
+        st.markdown(f"<span style='color:red; font-weight:bold;'> 申請は、{care_needs_2}</span>", unsafe_allow_html=True)
