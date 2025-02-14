@@ -2,6 +2,7 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 from model import models
+from main import make_predictions  # 修正: main.py の関数を使用
 
 # ページレイアウトをワイドに設定
 st.set_page_config(layout="wide")
@@ -33,7 +34,7 @@ with col1:
     sex = st.radio('性別:', ['男', '女'])
     sex_value = 1 if sex == '男' else 0
     # 年齢10群
-    age = st.slider('年齢:', 0, 110, 25)
+    age = st.slider('年齢:', 0, 110, 70)
     def age_group(age):
         if 0 <= age <= 50:
             return 0
@@ -84,40 +85,40 @@ with col2:
 
 with col3:
     # 食事
-    meal = st.radio('食事:', ['全介助', '一部介助', '自立'])
-    meal_value = {'全介助': 0, '一部介助': 1, '自立': 2}[meal]
+    meal = st.radio('食事:', ['自立', '一部介助', '全介助'])
+    meal_value = {'自立': 2, '一部介助': 1, '全介助': 0}[meal]
     # 移乗
-    transfer = st.radio('移乗:', ['全介助', '一部介助', '見守り', '自立'])
-    transfer_value = {'全介助': 0, '一部介助': 1, '見守り': 2, '自立': 3}[transfer]
+    transfer = st.radio('移乗:', ['自立', '見守り', '一部介助', '全介助'])
+    transfer_value = {'自立': 3, '見守り': 2, '一部介助': 1, '全介助': 0}[transfer]
     # 整容
-    hairdressing = st.radio('整容:', ['介助', '自立'])
-    hairdressing_value = {'介助': 0, '自立': 1}[hairdressing]
+    hairdressing = st.radio('整容:', ['自立', '介助'])
+    hairdressing_value = {'自立': 1, '介助': 0}[hairdressing]
     # トイレ動作
-    toilet = st.radio('トイレ動作:', ['全介助', '一部介助', '自立'])
-    toilet_value = {'全介助': 0, '一部介助': 1, '自立': 2}[toilet]
+    toilet = st.radio('トイレ動作:', ['自立', '一部介助', '全介助'])
+    toilet_value = {'自立': 2, '一部介助': 1, '全介助': 0}[toilet]
     # 排便管理
-    poop = st.radio('排便管理:', ['全介助', '一部介助', '自立'])
-    poop_value = {'全介助': 0, '一部介助': 1, '自立': 2}[poop]
+    poop = st.radio('排便管理:', ['自立', '一部介助', '全介助'])
+    poop_value = {'自立': 2, '一部介助': 1, '全介助': 0}[poop]
     # 排尿管理
-    urination = st.radio('排尿管理:', ['全介助', '一部介助', '自立'])
-    urination_value = {'全介助': 0, '一部介助': 1, '自立': 2}[urination]
+    urination = st.radio('排尿管理:', ['自立', '一部介助', '全介助'])
+    urination_value = {'自立': 2, '一部介助': 1, '全介助': 0}[urination]
 
 with col4:
     st.markdown("<div style='border-left: 10px solid black; height: 100%;'></div>", unsafe_allow_html=True)
 
 with col5:
     # 平地歩行
-    walking = st.radio('平地歩行:', ['歩行困難', '一部介助', '見守り', '自立'])
-    walking_value = {'歩行困難': 0, '一部介助': 1, '見守り': 2, '自立': 3}[walking]
+    walking = st.radio('平地歩行:', ['自立', '見守り', '一部介助', '歩行困難'])
+    walking_value = {'自立': 3, '見守り': 2, '一部介助': 1, '歩行困難': 0}[walking]
     # 階段
-    stairs = st.radio('階段:', ['困難', '一部介助', '自立'])
-    stairs_value = {'困難': 0, '一部介助': 1, '自立': 2}[stairs]
+    stairs = st.radio('階段:', ['自立', '一部介助', '困難'])
+    stairs_value = {'自立': 2, '一部介助': 1, '困難': 0}[stairs]
     # 更衣
-    wearing = st.radio('更衣:', ['全介助', '一部介助', '自立'])
-    wearing_value = {'全介助': 0, '一部介助': 1, '自立': 2}[wearing]
+    wearing = st.radio('更衣:', ['自立', '一部介助', '全介助'])
+    wearing_value = {'自立': 2, '一部介助': 1, '全介助': 0}[wearing]
     # 入浴
-    bathing = st.radio('入浴:', ['介助', '自立'])
-    bathing_value = {'介助': 0, '自立': 1}[bathing]
+    bathing = st.radio('入浴:', ['自立', '介助'])
+    bathing_value = {'自立': 1, '介助': 0}[bathing]
     # 認知症自立度
     dementia = st.radio('認知症自立度:', ['自立', '見守り～要介護'])
     dementia_value = {'自立': 0, '見守り～要介護': 1}[dementia]
@@ -156,43 +157,58 @@ with col7:
         }
         
         input_df = pd.DataFrame([input_data])
-
-        # 予測実行
         input_array = input_df.values
-        prediction_outcome = models['outcome_e'].predict(input_array)
-        probabilities_outcome = models['outcome_e'].predict_proba(input_array)
-        prediction_hospitalstay = models['hospitalstay_e'].predict(input_array)
-        probabilities_hospitalstay = models['hospitalstay_e'].predict_proba(input_array)
-        
-        input_array_2 = input_df.drop(columns=['介護_取得済', '介護_未取得', '介護_対象外']).values
-        prediction_nursingcare = models['nursingcare_e'].predict(input_array_2)
-        probabilities_nursingcare = models['nursingcare_e'].predict_proba(input_array_2)
+        result = make_predictions(input_array)
+
+#        # 予測実行
+#        input_array = input_df.values
+#        prediction_outcome = models['outcome_e'].predict(input_array)
+#        probabilities_outcome = models['outcome_e'].predict_proba(input_array)
+#        prediction_hospitalstay = models['hospitalstay_e'].predict(input_array)
+#        probabilities_hospitalstay = models['hospitalstay_e'].predict_proba(input_array)
+#        
+#        input_array_2 = input_df.drop(columns=['介護_取得済', '介護_未取得', '介護_対象外']).values
+#        prediction_nursingcare = models['nursingcare_e'].predict(input_array_2)
+#        probabilities_nursingcare = models['nursingcare_e'].predict_proba(input_array_2)
 
         st.markdown("<h1 style='font-size:24px; color:black;'>推論結果：</h1>", unsafe_allow_html=True)
         st.markdown("<h1 style='font-size:24px; color:blue;'>予想される退院経路:</h1>", unsafe_allow_html=True)
-        st.write(f'死亡の確率: {probabilities_outcome[0][0] * 100:.1f}%')
-        st.write(f'転院の確率: {probabilities_outcome[0][1] * 100:.1f}%')
-        # st.write(f'通常退院の確率: {probabilities_outcome[0][2] * 100:.1f}%')
+#        st.write(f'死亡の確率: {probabilities_outcome[0][0] * 100:.1f}%')
+#        st.write(f'転院の確率: {probabilities_outcome[0][1] * 100:.1f}%')
+#        # st.write(f'通常退院の確率: {probabilities_outcome[0][2] * 100:.1f}%')
+        st.write(f'死亡の確率: {result["予想される退院経路"]["死亡の確率"]}')
+        st.write(f'転院の確率: {result["予想される退院経路"]["転院の確率"]}')
 
         st.markdown("<h1 style='font-size:24px; color:blue;'>予想される入院期間：</h1>", unsafe_allow_html=True)
-        st.write(f'1週間以内の確率: {probabilities_hospitalstay[0][0] * 100:.1f}%')
-        st.write(f'1-2週間の確率: {probabilities_hospitalstay[0][1] * 100:.1f}%')
-        st.write(f'2-3週間の確率: {probabilities_hospitalstay[0][2] * 100:.1f}%')
-        stay_prob_1_2 = probabilities_hospitalstay[0][1] * 100
-        stay_prob_2_3 = probabilities_hospitalstay[0][2] * 100
-        st.write(f'1-3週間の確率: {stay_prob_1_2 + stay_prob_2_3:.1f}%')
-        st.write(f'3週間以上の確率: {probabilities_hospitalstay[0][3] * 100:.1f}%')
+#        st.write(f'1週間以内の確率: {probabilities_hospitalstay[0][0] * 100:.1f}%')
+##        st.write(f'1-2週間の確率: {probabilities_hospitalstay[0][1] * 100:.1f}%')
+##        st.write(f'2-3週間の確率: {probabilities_hospitalstay[0][2] * 100:.1f}%')
+#        stay_prob_1_2 = probabilities_hospitalstay[0][1] * 100
+#        stay_prob_2_3 = probabilities_hospitalstay[0][2] * 100
+#        st.write(f'1-3週間の確率: {stay_prob_1_2 + stay_prob_2_3:.1f}%')
+#        st.write(f'3週間以上の確率: {probabilities_hospitalstay[0][3] * 100:.1f}%')
+        st.write(f'  1週間以内の確率: {result["予想される入院期間"]["1週間以内の確率"]}')
+        stay_prob_1_2 = float(result["予想される入院期間"]["1-2週間の確率"].replace('%', ''))
+        stay_prob_2_3 = float(result["予想される入院期間"]["2-3週間の確率"].replace('%', ''))
+        st.write(f'  1-3週間の確率: {stay_prob_1_2 + stay_prob_2_3:.1f}%')
+        st.write(f'  3週間以上の確率: {result["予想される入院期間"]["3週間以上の確率"]}')
 
         st.markdown("<h1 style='font-size:24px; color:blue;'>介護申請の必要性(判定1)：</h1>", unsafe_allow_html=True)
-        transfer_prob = probabilities_outcome[0][1] * 100
-        stay_prob_3_plus = probabilities_hospitalstay[0][3] * 100
+        transfer_prob = float(result["予想される退院経路"]["転院の確率"].replace('%', ''))
+        stay_prob_3_plus = float(result["予想される入院期間"]["3週間以上の確率"].replace('%', ''))
+#        transfer_prob = probabilities_outcome[0][1] * 100
+#        stay_prob_3_plus = probabilities_hospitalstay[0][3] * 100
         care_status_1 = care
         care_needs_1 = 'まだしなくて良い'  # デフォルトを設定
         if care_status_1 == '要介護・要支援を取得済':
             care_needs_1 = '取得済みです(地域包括支援センターに有事相談できます)'
+        elif care_status_1 == '申請中':
+            care_needs_1 = '申請中です(地域包括支援センターに有事相談できます)'
+
         if (transfer_prob >= 20) or (stay_prob_3_plus >= 20):
             if (care_status_1 == '未申請') and (age >= 65):
                 care_needs_1 = '必要です'
+
         st.write(f'転院率・3週超の入院率(≥20%)で判定')
         st.markdown(f"<span style='color:red; font-weight:bold;'> 申請は、{care_needs_1}</span>", unsafe_allow_html=True)
 
@@ -202,9 +218,13 @@ with col7:
         care_needs_2 = 'まだしなくて良いです'  # デフォルトを設定
         if care_status_2 == '要介護・要支援を取得済':
             care_needs_2 = '取得済みです(地域包括支援センターに有事相談できます)'
-        nursing_care_prob = probabilities_nursingcare[0][1] * 100
+        elif care_status_2 == '申請中':
+            care_needs_2 = '申請中です(地域包括支援センターに有事相談できます)'
+        nursing_care_prob = float(result["介護申請の必要性(判定2)"]["介護申請が必要な確率"].replace('%', ''))
+#        nursing_care_prob = probabilities_nursingcare[0][1] * 100
         if nursing_care_prob >= 30:
             if (care_status_1 == '未申請') and (age >= 65):
                 care_needs_2 = '必要です'
-        st.write(f'介護申請が必要な確率: {probabilities_nursingcare[0][1] * 100:.1f}%')
+        st.write(f'  介護申請が必要な確率: {result["介護申請の必要性(判定2)"]["介護申請が必要な確率"]}')
+#        st.write(f'介護申請が必要な確率: {probabilities_nursingcare[0][1] * 100:.1f}%')
         st.markdown(f"<span style='color:red; font-weight:bold;'> 申請は、{care_needs_2}</span>", unsafe_allow_html=True)
